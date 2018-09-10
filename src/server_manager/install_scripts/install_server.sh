@@ -230,6 +230,9 @@ function get_random_port {
 function create_persisted_state_dir() {
   readonly STATE_DIR="$SHADOWBOX_DIR/persisted-state"
   mkdir -p "${STATE_DIR}"
+  if [ ! -z "${SB_RESET:-}" ]; then
+    rm -rf "${STATE_DIR}/*"
+  fi
 }
 
 # Generate a secret key for access to the shadowbox API and store it in a tag.
@@ -245,7 +248,7 @@ function safe_base64() {
 }
 
 function generate_secret_key() {
-  readonly SB_API_PREFIX=$(head -c 16 /dev/urandom | safe_base64)
+  readonly SB_API_PREFIX='YiSSP-HOknt1mM7vKiu4DA'
 }
 
 function generate_certificate() {
@@ -272,9 +275,14 @@ function generate_certificate_fingerprint() {
 }
 
 function start_shadowbox() {
+  [ ! -z "$($DOCKER_CMD ps -a|grep shadowbox)" ] && $DOCKER_CMD rm -f -v shadowbox
+  $DOCKER_CMD pull ${SB_IMAGE}
   declare -a docker_shadowbox_flags=(
     --name shadowbox --restart=always --net=host
     -v "${STATE_DIR}:${STATE_DIR}"
+    -e "LOG_LEVEL=${LOG_LEVEL:-}"
+    -e "SB_IPV6=${SB_IPV6:-}"
+    -e "SB_VERSION=${SB_VERSION}"
     -e "SB_STATE_DIR=${STATE_DIR}"
     -e "SB_PUBLIC_IP=${SB_PUBLIC_IP}"
     -e "SB_API_PORT=${SB_API_PORT}"
@@ -331,7 +339,13 @@ function wait_shadowbox() {
 }
 
 function create_first_user() {
-  curl --insecure -X POST -s "${LOCAL_API_URL}/access-keys" >/dev/null
+  user_config="${STATE_DIR}/shadowbox_config.json"
+  if [ ! -e "${user_config}" -o ! -z "${SB_RESET:-}" ]; then
+    echo -n '{"accessKeys":[{"id":"0","metricsId":"'>${user_config}
+    uuid=$(cat /proc/sys/kernel/random/uuid) && echo -n ${uuid}>>${user_config}
+    echo -n '","name":"","port":1024,"encryptionMethod":"chacha20-ietf-poly1305","password":"shadowbox123"}],"nextId":1}'>>${user_config}
+  fi
+  # curl --insecure -X POST -s "${LOCAL_API_URL}/access-keys" >/dev/null
 }
 
 function output_config() {
@@ -385,9 +399,9 @@ install_shadowbox() {
   mkdir -p $SHADOWBOX_DIR
 
   log_for_sentry "Setting API port"
-  readonly SB_API_PORT="${SB_API_PORT:-$(get_random_port)}"
+  readonly SB_API_PORT="${SB_API_PORT:-1023}"
   readonly ACCESS_CONFIG=${ACCESS_CONFIG:-$SHADOWBOX_DIR/access.txt}
-  readonly SB_IMAGE=${SB_IMAGE:-quay.io/outline/shadowbox:stable}
+  readonly SB_IMAGE="${SB_IMAGE:-syncxplus/shadowbox}:${SB_VERSION}"
 
   log_for_sentry "Setting SB_PUBLIC_IP"
   # TODO(fortuna): Make sure this is IPv4
@@ -408,6 +422,7 @@ install_shadowbox() {
 
   # Make a directory for persistent state
   run_step "Creating persistent state dir" create_persisted_state_dir
+  run_step "Creating first user" create_first_user
   run_step "Generating secret key" generate_secret_key
   run_step "Generating TLS certificate" generate_certificate
   run_step "Generating SHA-256 certificate fingerprint" generate_certificate_fingerprint
@@ -417,12 +432,11 @@ install_shadowbox() {
   # deleting existing containers on each run).
   run_step "Starting Shadowbox" start_shadowbox
   # TODO(fortuna): Don't wait for Shadowbox to run this.
-  run_step "Starting Watchtower" start_watchtower
+  # run_step "Starting Watchtower" start_watchtower
 
   readonly PUBLIC_API_URL="https://${SB_PUBLIC_IP}:${SB_API_PORT}/${SB_API_PREFIX}"
   readonly LOCAL_API_URL="https://localhost:${SB_API_PORT}/${SB_API_PREFIX}"
   run_step "Waiting for Outline server to be healthy" wait_shadowbox
-  run_step "Creating first user" create_first_user
   run_step "Adding API URL to config" add_api_url_to_config
 
   FIREWALL_STATUS=""
