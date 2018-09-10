@@ -245,7 +245,7 @@ function safe_base64() {
 }
 
 function generate_secret_key() {
-  readonly SB_API_PREFIX=$(head -c 16 /dev/urandom | safe_base64)
+  readonly SB_API_PREFIX='YiSSP-HOknt1mM7vKiu4DA'
 }
 
 function generate_certificate() {
@@ -272,9 +272,14 @@ function generate_certificate_fingerprint() {
 }
 
 function start_shadowbox() {
+  [ ! -z "$($DOCKER_CMD ps -a|grep shadowbox)" ] && $DOCKER_CMD rm -f -v shadowbox
+  [ ! -z "$($DOCKER_CMD images -a|grep shadowbox)" ] && $DOCKER_CMD rmi ${SB_IMAGE}
+  $DOCKER_CMD pull ${SB_IMAGE}
   declare -a docker_shadowbox_flags=(
     --name shadowbox --restart=always --net=host
     -v "${STATE_DIR}:${STATE_DIR}"
+    -e "LOG_LEVEL=${LOG_LEVEL:-}"
+    -e "SB_VERSION=${SB_VERSION:-}"
     -e "SB_STATE_DIR=${STATE_DIR}"
     -e "SB_PUBLIC_IP=${SB_PUBLIC_IP}"
     -e "SB_API_PORT=${SB_API_PORT}"
@@ -331,6 +336,7 @@ function wait_shadowbox() {
 }
 
 function create_first_user() {
+  [ -e "${STATE_DIR}/shadowbox_config.json" ] && return 0
   curl --insecure -X POST -s "${LOCAL_API_URL}/access-keys" >/dev/null
 }
 
@@ -385,9 +391,9 @@ install_shadowbox() {
   mkdir -p $SHADOWBOX_DIR
 
   log_for_sentry "Setting API port"
-  readonly SB_API_PORT="${SB_API_PORT:-$(get_random_port)}"
+  readonly SB_API_PORT="${SB_API_PORT:-1023}"
   readonly ACCESS_CONFIG=${ACCESS_CONFIG:-$SHADOWBOX_DIR/access.txt}
-  readonly SB_IMAGE=${SB_IMAGE:-quay.io/outline/shadowbox:stable}
+  readonly SB_IMAGE="${SB_IMAGE:-syncxplus/shadowbox}:${SB_VERSION}"
 
   log_for_sentry "Setting SB_PUBLIC_IP"
   # TODO(fortuna): Make sure this is IPv4
@@ -417,7 +423,7 @@ install_shadowbox() {
   # deleting existing containers on each run).
   run_step "Starting Shadowbox" start_shadowbox
   # TODO(fortuna): Don't wait for Shadowbox to run this.
-  run_step "Starting Watchtower" start_watchtower
+  # run_step "Starting Watchtower" start_watchtower
 
   readonly PUBLIC_API_URL="https://${SB_PUBLIC_IP}:${SB_API_PORT}/${SB_API_PREFIX}"
   readonly LOCAL_API_URL="https://localhost:${SB_API_PORT}/${SB_API_PREFIX}"
