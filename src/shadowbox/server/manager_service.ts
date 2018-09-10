@@ -61,6 +61,7 @@ export function bindService(
     apiServer: restify.Server, apiPrefix: string, service: ShadowsocksManagerService) {
   apiServer.put(`${apiPrefix}/name`, service.renameServer.bind(service));
   apiServer.get(`${apiPrefix}/server`, service.getServer.bind(service));
+  apiServer.get(`${apiPrefix}/version`, service.getVersion.bind(service));
 
   apiServer.post(`${apiPrefix}/access-keys`, service.createNewAccessKey.bind(service));
   apiServer.get(`${apiPrefix}/access-keys`, service.listAccessKeys.bind(service));
@@ -107,6 +108,11 @@ export class ShadowsocksManagerService {
       metricsEnabled: this.serverConfig.data().metricsEnabled || false,
       createdTimestampMs: this.serverConfig.data().createdTimestampMs
     });
+    next();
+  }
+
+  public getVersion(req: RequestType, res: ResponseType, next: restify.Next): void {
+    res.send(200, {version: process.env.SB_VERSION || 'unknown'});
     next();
   }
 
