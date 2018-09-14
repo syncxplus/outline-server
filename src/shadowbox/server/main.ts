@@ -30,7 +30,7 @@ import * as server_config from './server_config';
 import {SharedMetrics, SharedMetricsJson} from './shared_metrics';
 
 const DEFAULT_STATE_DIR = '/root/shadowbox/persisted-state';
-const MAX_STATS_FILE_AGE_MS = 5000;
+const MAX_STATS_FILE_AGE_MS = 3600000;
 
 // Serialized format for the metrics file.
 // WARNING: Renaming fields will break backwards-compatibility.

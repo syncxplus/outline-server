@@ -135,6 +135,9 @@ static char *remote_port  = NULL;
 static char *manager_addr = NULL;
 uint64_t tx               = 0;
 uint64_t rx               = 0;
+#ifndef _UPDATE_INTERVAL
+#define _UPDATE_INTERVAL 3600
+#endif
 
 #ifndef __MINGW32__
 ev_timer stat_update_watcher;
@@ -2065,7 +2068,7 @@ main(int argc, char **argv)
 
 #ifndef __MINGW32__
     if (manager_addr != NULL) {
-        ev_timer_init(&stat_update_watcher, stat_update_cb, UPDATE_INTERVAL, UPDATE_INTERVAL);
+        ev_timer_init(&stat_update_watcher, stat_update_cb, _UPDATE_INTERVAL, _UPDATE_INTERVAL);
         ev_timer_start(EV_DEFAULT, &stat_update_watcher);
     }
 #endif
