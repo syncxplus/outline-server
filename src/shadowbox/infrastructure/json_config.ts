@@ -76,13 +76,13 @@ export class DelayedConfig<T> implements JsonConfig<T> {
   private dirty = false;
   constructor(private config: JsonConfig<T>, writePeriodMs: number) {
     // This repeated call will never be cancelled until the execution is terminated.
-    setInterval(() => {
+    /*setInterval(() => {
       if (!this.dirty) {
         return;
       }
       this.config.write();
       this.dirty = false;
-    }, writePeriodMs);
+    }, writePeriodMs);*/
   }
 
   data(): T {
