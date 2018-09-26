@@ -206,8 +206,8 @@ class ServerAccessKeyRepository implements AccessKeyRepository {
             accessKeyJson.port, accessKeyJson.password, this.metricsSocket,
             accessKeyJson.encryptionMethod)
         .then((ssInstance) => {
-          ssInstance.onInboundBytes(
-              this.handleInboundBytes.bind(this, accessKeyJson.id, accessKeyJson.metricsId));
+          /*ssInstance.onInboundBytes(
+              this.handleInboundBytes.bind(this, accessKeyJson.id, accessKeyJson.metricsId));*/
           this.ssInstances.set(accessKeyJson.id, ssInstance);
         });
   }
