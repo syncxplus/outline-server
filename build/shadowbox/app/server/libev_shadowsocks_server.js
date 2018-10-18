@@ -1,0 +1,178 @@
+"use strict";
+// Copyright 2018 The Outline Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+Object.defineProperty(exports, "__esModule", { value: true });
+const child_process = require("child_process");
+const dns = require("dns");
+const events = require("events");
+const shadowsocks_config_1 = require("ShadowsocksConfig/shadowsocks_config");
+const logging = require("../infrastructure/logging");
+// Runs shadowsocks-libev server instances.
+class LibevShadowsocksServer {
+    constructor(publicAddress, verbose) {
+        this.publicAddress = publicAddress;
+        this.verbose = verbose;
+        // Old shadowsocks instances had been started with the aes-128-cfb encryption
+        // method, while new instances specify which method to use.
+        this.DEFAULT_METHOD = 'aes-128-cfb';
+    }
+    startInstance(portNumber, password, metricsSocket, encryptionMethod = this.DEFAULT_METHOD) {
+        logging.info(`Starting server on port ${portNumber}`);
+        const metricsAddress = metricsSocket.address();
+        const commandArguments = [
+            '-m', encryptionMethod,
+            '-u',
+            '--fast-open',
+            '-p', portNumber.toString(), '-k', password, '--manager-address',
+            `${metricsAddress.address}:${metricsAddress.port}`
+        ];
+        if (!!process.env.SB_IPV6) {
+            commandArguments.push('-6');
+            commandArguments.push('-s');
+            commandArguments.push('::0');
+            commandArguments.push('-s');
+            commandArguments.push('0.0.0.0');
+        }
+        // Add the system DNS servers.
+        // TODO(fortuna): Add dns.getServers to @types/node.
+        for (const dnsServer of dns.getServers()) {
+            commandArguments.push('-d');
+            commandArguments.push(dnsServer);
+        }
+        if (this.verbose) {
+            // Make the Shadowsocks output verbose in debug mode.
+            commandArguments.push('-v');
+        }
+        logging.info('starting ss-server with args: ' + commandArguments.join(' '));
+        const childProcess = child_process.spawn('ss-server', commandArguments);
+        childProcess.on('error', (error) => {
+            logging.error(`Error spawning server on port ${portNumber}: ${error}`);
+        });
+        // TODO(fortuna): Add restart logic.
+        childProcess.on('exit', (code, signal) => {
+            logging.info(`Server on port ${portNumber} has exited. Code: ${code}, Signal: ${signal}`);
+        });
+        // TODO(fortuna): Disable this for production.
+        // TODO(fortuna): Consider saving the output and expose it through the manager service.
+        childProcess.stdout.pipe(process.stdout);
+        childProcess.stderr.pipe(process.stderr);
+        // Generate a SIP002 access url.
+        const accessUrl = shadowsocks_config_1.SIP002_URI.stringify(shadowsocks_config_1.makeConfig({
+            host: this.publicAddress,
+            port: portNumber,
+            method: encryptionMethod,
+            password,
+            outline: 1,
+        }));
+        return Promise.resolve(new LibevShadowsocksServerInstance(childProcess, portNumber, password, encryptionMethod, accessUrl, metricsSocket));
+    }
+}
+exports.LibevShadowsocksServer = LibevShadowsocksServer;
+class LibevShadowsocksServerInstance {
+    constructor(childProcess, portNumber, password, encryptionMethod, accessUrl, metricsSocket) {
+        this.childProcess = childProcess;
+        this.portNumber = portNumber;
+        this.password = password;
+        this.encryptionMethod = encryptionMethod;
+        this.accessUrl = accessUrl;
+        this.metricsSocket = metricsSocket;
+        this.eventEmitter = new events.EventEmitter();
+        this.INBOUND_BYTES_EVENT = 'inboundBytes';
+    }
+    stop() {
+        logging.info(`Stopping server on port ${this.portNumber}`);
+        this.childProcess.kill();
+    }
+    // onInboundBytes only reports inbound bytes, received from the client or from the target.
+    //
+    // This measure under-estimates outbound traffic because:
+    // 1) The traffic to and from the client has overhead from Shadowsocks
+    // 2) The overhead on the traffic to the client is larger than on the traffic from the client
+    //    because, from the client perspective, download traffic is usually larger than upload.
+    //
+    // The measure is calculated here:
+    // https://github.com/shadowsocks/shadowsocks-libev/blob/a16826b83e73af386806d1b51149f8321820835e/src/server.c#L172
+    onInboundBytes(callback) {
+        if (this.eventEmitter.listenerCount(this.INBOUND_BYTES_EVENT) === 0) {
+            this.createMetricsListener();
+        }
+        this.eventEmitter.on(this.INBOUND_BYTES_EVENT, callback);
+    }
+    createMetricsListener() {
+        let lastInboundBytes = 0;
+        this.metricsSocket.on('message', (buf) => {
+            let metricsMessage;
+            try {
+                metricsMessage = parseMetricsMessage(buf);
+            }
+            catch (err) {
+                logging.error('error parsing metrics: ' + buf + ', ' + err);
+                return;
+            }
+            if (metricsMessage.portNumber !== this.portNumber) {
+                // Ignore metrics for other ss-servers, which post to the same metricsSocket.
+                return;
+            }
+            const delta = metricsMessage.totalInboundBytes - lastInboundBytes;
+            if (delta > 0) {
+                this.getConnectedClientIPAddresses()
+                    .then((ipAddresses) => {
+                    lastInboundBytes = metricsMessage.totalInboundBytes;
+                    this.eventEmitter.emit(this.INBOUND_BYTES_EVENT, delta, ipAddresses);
+                })
+                    .catch((err) => {
+                    logging.error(`Unable to get client IP addresses ${err}`);
+                });
+            }
+        });
+    }
+    getConnectedClientIPAddresses() {
+        const lsofCommand = `lsof -i tcp:${this.portNumber} -n -P -Fn ` +
+            ' | grep \'\\->\'' + // only look at connection lines (e.g. skips "p8855" and "f60")
+            ' | sed \'s/:\\d*$//g\'' + // remove p
+            ' | sed \'s/n\\S*->//g\'' + // remove first part of address
+            ' | sed \'s/\\[//g\'' + // remove [] (used by ipv6)
+            ' | sed \'s/\\]//g\'' + // remove ] (used by ipv6)
+            ' | sort | uniq'; // remove duplicates
+        return this.execCmd(lsofCommand).then((output) => {
+            return output.split('\n');
+        });
+    }
+    execCmd(cmd) {
+        return new Promise((fulfill, reject) => {
+            child_process.exec(cmd, (error, stdout, stderr) => {
+                if (error) {
+                    reject(error);
+                }
+                else {
+                    fulfill(stdout.trim());
+                }
+            });
+        });
+    }
+}
+function parseMetricsMessage(buf) {
+    const jsonString = buf.toString()
+        .substr('stat: '.length) // remove leading "stat: "
+        .replace(/\0/g, ''); // remove trailing null terminator
+    // statObj is in the form {"port#": totalInboundBytes}, where
+    // there is always only 1 port# per JSON object. If there are multiple
+    // ss-servers communicating to the same manager, we will get multiple
+    // message events.
+    const statObj = JSON.parse(jsonString);
+    // Object.keys is used here because node doesn't support Object.values.
+    const portNumber = parseInt(Object.keys(statObj)[0], 10);
+    const totalInboundBytes = statObj[portNumber];
+    return { portNumber, totalInboundBytes };
+}
