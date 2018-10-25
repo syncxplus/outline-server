@@ -32,7 +32,7 @@ export class LibevShadowsocksServer implements ShadowsocksServer {
   constructor(
       private publicAddress: string, private metricsSocket: dgram.Socket,
       ipLocation: IpLocationService, usageWriter: UsageMetricsWriter, private verbose: boolean) {
-    metricsSocket.on('message', (buf: Buffer) => {
+    /*metricsSocket.on('message', (buf: Buffer) => {
       let metricsMessage;
       try {
         metricsMessage = parseMetricsMessage(buf);
@@ -69,7 +69,7 @@ export class LibevShadowsocksServer implements ShadowsocksServer {
           .catch((err: Error) => {
             logging.error(`Unable to write bytes transferred: ${err.stack}`);
           });
-    });
+    });*/
   }
 
   public startInstance(id: string, portNumber: number, password: string, encryptionMethod):
