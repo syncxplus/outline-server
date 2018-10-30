@@ -52,15 +52,19 @@ export interface SharedMetricsPublisher {
   startSharing();
   stopSharing();
   isSharingEnabled();
+  countActivePort(): number;
 }
 
 export interface UsageMetrics {
   getUsage(): KeyUsage[];
   reset();
+  decPort();
+  countPort(): number;
 }
 
 export interface UsageMetricsWriter {
   writeBytesTransferred(accessKeyId: AccessKeyId, numBytes: number, countries: string[]);
+  incPort(port: number);
 }
 
 // Tracks usage metrics since the server started.
@@ -68,9 +72,33 @@ export interface UsageMetricsWriter {
 export class InMemoryUsageMetrics implements UsageMetrics, UsageMetricsWriter {
   // Map from the metrics AccessKeyId to its usage.
   private totalUsage = new Map<string, KeyUsage>();
+  private lastTimePortStat = new Map<number, number>();
+  private activePort = new Map<number, number>();
 
   getUsage(): KeyUsage[] {
     return [...this.totalUsage.values()];
+  }
+
+  incPort(port: number) {
+    this.activePort.set(port, (this.activePort.get(port) || 0) + 1);
+  }
+
+  decPort() {
+    if (this.lastTimePortStat.size > 0) {
+      this.lastTimePortStat.forEach((v, k) => {
+        if (this.activePort.get(k) === v) {
+          this.activePort.delete(k);
+        }
+      });
+    }
+    this.lastTimePortStat.clear();
+    this.activePort.forEach((v, k) => {
+      this.lastTimePortStat.set(k, v);
+    });
+  }
+
+  countPort() {
+    return this.activePort.size;
   }
 
   // We use a separate metrics id so the accessKey id is not disclosed.
@@ -141,7 +169,7 @@ export class OutlineSharedMetricsPublisher implements SharedMetricsPublisher {
   constructor(
       private clock: Clock,
       private serverConfig: JsonConfig<ServerConfigJson>,
-      usageMetrics: UsageMetrics,
+      private usageMetrics: UsageMetrics,
       private toMetricsId: (accessKeyId: AccessKeyId) => AccessKeyMetricsId,
       private metricsCollector: MetricsCollectorClient,
   ) {
@@ -149,12 +177,13 @@ export class OutlineSharedMetricsPublisher implements SharedMetricsPublisher {
     this.reportStartTimestampMs = this.clock.now();
 
     this.clock.setInterval(() => {
-      if (!this.isSharingEnabled()) {
+      /*if (!this.isSharingEnabled()) {
         return;
       }
       this.reportMetrics(usageMetrics.getUsage());
-      usageMetrics.reset();
-    }, MS_PER_HOUR);
+      usageMetrics.reset();*/
+      usageMetrics.decPort();
+    }, 600000);
     // TODO(fortuna): also trigger report on shutdown, so data loss is minimized.
   }
 
@@ -170,6 +199,10 @@ export class OutlineSharedMetricsPublisher implements SharedMetricsPublisher {
 
   isSharingEnabled(): boolean {
     return this.serverConfig.data().metricsEnabled || false;
+  }
+
+  countActivePort(): number {
+    return this.usageMetrics.countPort();
   }
 
   private reportMetrics(usageMetrics: KeyUsage[]) {

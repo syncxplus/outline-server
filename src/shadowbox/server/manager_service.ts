@@ -120,6 +120,7 @@ export class ShadowsocksManagerService {
     res.send(200, {
       version: process.env.SB_VERSION,
       userCount: accessKeys.length,
+      activePortCount: this.metricsPublisher.countActivePort(),
     });
     next();
   }
