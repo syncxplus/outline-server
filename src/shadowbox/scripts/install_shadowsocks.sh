@@ -32,7 +32,7 @@ apk add --no-cache --virtual BUILD_DEPS \
 mkdir -p $BUILD_DIR
 cd $BUILD_DIR
 curl -sSL $DOWNLOAD_URL | tar xz --strip 1
-
+cp -f /scripts/server.c /src/shadowsocks-libev/src/server.c
 ./configure --disable-documentation
 make install
 

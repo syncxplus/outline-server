@@ -60,6 +60,10 @@ class MultiMetricsWriter implements UsageMetricsWriter {
     this.managerMetrics.writeBytesTransferred(accessKeyId, numBytes);
     this.sharedMetrics.writeBytesTransferred(accessKeyId, numBytes, countries);
   }
+
+  incPort(port: number) {
+    this.sharedMetrics.incPort(port);
+  }
 }
 
 async function main() {
