@@ -37,11 +37,12 @@ export interface AccessKey {
   metricsId: AccessKeyMetricsId;
   // Parameters to access the proxy
   proxyParams: ProxyParams;
+  rate?: number;
 }
 
 export interface AccessKeyRepository {
   // Creates a new access key. Parameters are chosen automatically.
-  createNewAccessKey(): Promise<AccessKey>;
+  createNewAccessKey(rate?: number): Promise<AccessKey>;
   // Removes the access key given its id.  Returns true if successful.
   removeAccessKey(id: AccessKeyId): boolean;
   // Lists all existing access keys

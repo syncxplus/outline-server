@@ -40,7 +40,8 @@ function accessKeyToJson(accessKey: AccessKey) {
       method: accessKey.proxyParams.encryptionMethod,
       password: accessKey.proxyParams.password,
       outline: 1,
-    }))
+    })),
+    rate: accessKey.rate || 0
   };
 }
 
@@ -50,6 +51,7 @@ interface RequestParams {
   id?: string;
   name?: string;
   metricsEnabled?: boolean;
+  rate?: number;
 }
 interface RequestType {
   params: RequestParams;
@@ -138,7 +140,7 @@ export class ShadowsocksManagerService {
   public createNewAccessKey(req: RequestType, res: ResponseType, next: restify.Next): void {
     try {
       logging.debug(`createNewAccessKey request ${req.params}`);
-      this.accessKeys.createNewAccessKey().then((accessKey) => {
+      this.accessKeys.createNewAccessKey(req.params.rate || 0).then((accessKey) => {
         const accessKeyJson = accessKeyToJson(accessKey);
         res.send(201, accessKeyJson);
         return next();
