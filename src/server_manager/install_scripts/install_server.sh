@@ -340,16 +340,16 @@ function wait_shadowbox() {
 
 function create_first_user() {
   user_config="${STATE_DIR}/shadowbox_config.json"
-  if [ ${SB_VERSION#*.} -ge 5 ]; then
-    curl -OL https://raw.githubusercontent.com/syncxplus/shadowbox/SB_${SB_VERSION}/build/shadowbox/app/shadowbox_config.json
-    mv shadowbox_config.json ${user_config}
-  else
+  # if [ ${SB_VERSION#*.} -ge 5 ]; then
+  #   curl -OL https://raw.githubusercontent.com/syncxplus/shadowbox/SB_${SB_VERSION}/build/shadowbox/app/shadowbox_config.json
+  #   mv shadowbox_config.json ${user_config}
+  # else
     if [ ! -e "${user_config}" -o ! -z "${SB_RESET:-}" ]; then
       echo -n '{"accessKeys":[{"id":"0","metricsId":"'>${user_config}
       uuid=$(cat /proc/sys/kernel/random/uuid) && echo -n ${uuid}>>${user_config}
       echo -n '","name":"","port":1024,"encryptionMethod":"chacha20-ietf-poly1305","password":"shadowbox123"}],"nextId":1}'>>${user_config}
     fi
-  fi
+  # fi
   # curl --insecure -X POST -s "${LOCAL_API_URL}/access-keys" >/dev/null
 }
 
