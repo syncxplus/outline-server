@@ -406,6 +406,7 @@ install_shadowbox() {
   log_for_sentry "Setting API port"
   readonly SB_API_PORT="${SB_API_PORT:-1023}"
   readonly ACCESS_CONFIG=${ACCESS_CONFIG:-$SHADOWBOX_DIR/access.txt}
+  readonly SB_VERSION=${SB_VERSION:-1.5}
   readonly SB_IMAGE="${SB_IMAGE:-syncxplus/shadowbox}:${SB_VERSION}"
 
   log_for_sentry "Setting SB_PUBLIC_IP"
