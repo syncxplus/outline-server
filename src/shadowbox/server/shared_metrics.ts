@@ -183,7 +183,7 @@ export class OutlineSharedMetricsPublisher implements SharedMetricsPublisher {
       this.reportMetrics(usageMetrics.getUsage());
       usageMetrics.reset();*/
       usageMetrics.decPort();
-    }, 600000);
+    }, 300000);
     // TODO(fortuna): also trigger report on shutdown, so data loss is minimized.
   }
 
