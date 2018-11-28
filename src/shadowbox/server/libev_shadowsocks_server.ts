@@ -33,6 +33,7 @@ export class LibevShadowsocksServer implements ShadowsocksServer {
       private publicAddress: string, private metricsSocket: dgram.Socket,
       ipLocation: IpLocationService, usageWriter: UsageMetricsWriter, private verbose: boolean) {
     metricsSocket.on('message', (buf: Buffer) => {
+      logging.info(buf.toString());
       let metricsMessage;
       try {
         metricsMessage = parseMetricsMessage(buf);
