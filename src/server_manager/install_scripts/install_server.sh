@@ -275,8 +275,8 @@ function generate_certificate_fingerprint() {
 }
 
 function start_shadowbox() {
-  [ ! -z "$($DOCKER_CMD ps -a|grep shadowbox)" ] && $DOCKER_CMD rm -f -v shadowbox
   $DOCKER_CMD pull ${SB_IMAGE}
+  [ ! -z "$($DOCKER_CMD ps -a|grep shadowbox)" ] && $DOCKER_CMD rm -f -v shadowbox
   declare -a docker_shadowbox_flags=(
     --name shadowbox --restart=always --net=host
     -v "${STATE_DIR}:${STATE_DIR}"
