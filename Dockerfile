@@ -26,7 +26,7 @@ ARG GITHUB_RELEASE
 LABEL shadowbox.github.release="${GITHUB_RELEASE}"
 
 # lsof for Shadowbox, curl for detecting our public IP.
-RUN apk add --no-cache lsof curl
+RUN apk add --no-cache lsof curl openssl
 
 COPY src/shadowbox/scripts scripts/
 COPY src/shadowbox/scripts/update_mmdb.sh /etc/periodic/weekly/update_mmdb
@@ -45,8 +45,7 @@ RUN /opt/yarn-v$YARN_VERSION/bin/yarn install --prod
 # Install management service
 COPY build/shadowbox/app app/
 
-# Create default state directory.
-RUN mkdir -p /root/shadowbox/persisted-state
+VOLUME ['/root/shadowbox/persisted-state']
 
 COPY src/shadowbox/docker/cmd.sh /
 
