@@ -15,7 +15,13 @@
 # limitations under the License.
 
 export SB_PUBLIC_IP=${SB_PUBLIC_IP:-$(curl https://ipinfo.io/ip)}
+export SB_API_PORT=1023
+export SB_API_PREFIX=YiSSP-HOknt1mM7vKiu4DA
 export SB_METRICS_URL=${SB_METRICS_URL:-https://metrics-prod.uproxy.org}
+export SB_STATE_DIR=/root/shadowbox/persisted-state
+export SB_CERTIFICATE_FILE="${SB_STATE_DIR}/shadowbox-selfsigned.crt"
+export SB_PRIVATE_KEY_FILE="${SB_STATE_DIR}/shadowbox-selfsigned.key"
+
 
 # The maximum number of files that can be opened by ss-server greatly
 # influence on performance, as described here:
@@ -37,5 +43,19 @@ ulimit -n 32768
 
 # Start cron, which is used to check for updates to the GeoIP database
 crond
+
+openssl req -x509 -nodes -days 36500 -newkey rsa:2048 -subj "/CN=${SB_PUBLIC_IP}" \
+  -keyout "${SB_PRIVATE_KEY_FILE}" -out "${SB_CERTIFICATE_FILE}" >/dev/null 2>&1 \
+  && CERT_OPENSSL_FINGERPRINT=$(openssl x509 -in "${SB_CERTIFICATE_FILE}" -noout -sha256 -fingerprint) \
+  && CERT_HEX_FINGERPRINT=$(echo ${CERT_OPENSSL_FINGERPRINT#*=} | tr -d :) \
+  && echo "certSha256:$CERT_HEX_FINGERPRINT" > "${SB_STATE_DIR}/access.txt" \
+  && echo "apiUrl:https://${SB_PUBLIC_IP}:${SB_API_PORT}/${SB_API_PREFIX}" >> "${SB_STATE_DIR}/access.txt"
+
+readonly user_config="${SB_STATE_DIR}/shadowbox_config.json"
+if [[ ! -e "${user_config}" ]]; then
+  echo -n '{"accessKeys":[{"id":"0","metricsId":"'>${user_config}
+  uuid=$(cat /proc/sys/kernel/random/uuid) && echo -n ${uuid}>>${user_config}
+  echo -n '","name":"","port":1024,"encryptionMethod":"chacha20-ietf-poly1305","password":"shadowbox123"}],"nextId":1}'>>${user_config}
+fi
 
 node app/server/main.js

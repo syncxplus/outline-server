@@ -34,6 +34,7 @@ interface AccessKeyConfig {
   password: string;
   port: number;
   encryptionMethod?: string;
+  rate?: number;
 }
 
 // The configuration file format as json.
@@ -73,7 +74,8 @@ function makeAccessKey(hostname: string, accessKeyJson: AccessKeyConfig): Access
       portNumber: accessKeyJson.port,
       encryptionMethod: accessKeyJson.encryptionMethod,
       password: accessKeyJson.password,
-    }
+    },
+    rate: accessKeyJson.rate || 0
   };
 }
 
@@ -101,7 +103,7 @@ export class ServerAccessKeyRepository implements AccessKeyRepository {
     }
   }
 
-  createNewAccessKey(): Promise<AccessKey> {
+  createNewAccessKey(rate?: number): Promise<AccessKey> {
     return getRandomUnusedPort(this.reservedPorts).then((port) => {
       const id = this.keyConfig.data().nextId.toString();
       this.keyConfig.data().nextId += 1;
@@ -114,7 +116,8 @@ export class ServerAccessKeyRepository implements AccessKeyRepository {
         name: '',
         port,
         encryptionMethod: this.NEW_USER_ENCRYPTION_METHOD,
-        password
+        password,
+        rate: rate || 0
       };
       this.keyConfig.data().accessKeys.push(accessKeyJson);
       try {

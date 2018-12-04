@@ -277,6 +277,9 @@ function fakeSharedMetricsReporter(): SharedMetricsPublisher {
     },
     isSharingEnabled(): boolean {
       return sharing;
+    },
+    countActivePort(): number {
+      return 0;
     }
   };
 }

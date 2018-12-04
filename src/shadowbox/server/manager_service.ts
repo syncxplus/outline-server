@@ -40,7 +40,8 @@ function accessKeyToJson(accessKey: AccessKey) {
       method: accessKey.proxyParams.encryptionMethod,
       password: accessKey.proxyParams.password,
       outline: 1,
-    }))
+    })),
+    rate: accessKey.rate || 0
   };
 }
 
@@ -50,6 +51,9 @@ interface RequestParams {
   id?: string;
   name?: string;
   metricsEnabled?: boolean;
+  rate?: number;
+  count?: number;
+  accessKeys?: number[];
 }
 interface RequestType {
   params: RequestParams;
@@ -65,8 +69,10 @@ export function bindService(
   apiServer.get(`${apiPrefix}/info`, service.getInfo.bind(service));
 
   apiServer.post(`${apiPrefix}/access-keys`, service.createNewAccessKey.bind(service));
+  apiServer.post(`${apiPrefix}/access-keys/:count`, service.createNewAccessKey.bind(service));
   apiServer.get(`${apiPrefix}/access-keys`, service.listAccessKeys.bind(service));
   apiServer.del(`${apiPrefix}/access-keys/:id`, service.removeAccessKey.bind(service));
+  apiServer.del(`${apiPrefix}/access-keys`, service.removeAccessKeys.bind(service));
   apiServer.put(`${apiPrefix}/access-keys/:id/name`, service.renameAccessKey.bind(service));
 
   apiServer.get(`${apiPrefix}/metrics/transfer`, service.getDataUsage.bind(service));
@@ -118,6 +124,7 @@ export class ShadowsocksManagerService {
     res.send(200, {
       version: process.env.SB_VERSION,
       userCount: accessKeys.length,
+      activePortCount: this.metricsPublisher.countActivePort(),
     });
     next();
   }
@@ -138,11 +145,36 @@ export class ShadowsocksManagerService {
   public createNewAccessKey(req: RequestType, res: ResponseType, next: restify.Next): void {
     try {
       logging.debug(`createNewAccessKey request ${req.params}`);
-      this.accessKeys.createNewAccessKey().then((accessKey) => {
-        const accessKeyJson = accessKeyToJson(accessKey);
-        res.send(201, accessKeyJson);
-        return next();
-      });
+      const count = req.params.count || 1;
+      if (count <= 0 || count > Number(process.env.MAX_POST_USER_COUNT || 10)) {
+        return next(new restify.InternalServerError(`Invalid request param count: ${count}`));
+      } else if (count === 1) {
+        this.accessKeys.createNewAccessKey(req.params.rate || 0).then((accessKey) => {
+          const accessKeyJson = accessKeyToJson(accessKey);
+          res.send(201, accessKeyJson);
+          return next();
+        });
+      } else {
+        const arr: number[] = [];
+        for (let i = 0; i < count; ++i) {
+          arr.push(0);
+        }
+        const response = [];
+        Promise
+            .all(arr.map(i => {
+              return this.accessKeys.createNewAccessKey(req.params.rate || i);
+            }))
+            .then((keys) => {
+              for (const key of keys) {
+                response.push(accessKeyToJson(key));
+              }
+              res.send(201, response);
+              return next();
+            })
+            .catch(error => {
+              return next(new restify.InternalServerError(error));
+            });
+      }
     } catch (error) {
       logging.error(error);
       return next(new restify.InternalServerError());
@@ -159,6 +191,27 @@ export class ShadowsocksManagerService {
       }
       res.send(204);
       return next();
+    } catch (error) {
+      logging.error(error);
+      return next(new restify.InternalServerError());
+    }
+  }
+
+  public removeAccessKeys(req: RequestType, res: ResponseType, next: restify.Next): void {
+    try {
+      logging.debug(`removeAccessKeys request ${req.params.accessKeys}`);
+      const accessKeys = req.params.accessKeys;
+      Promise
+          .all(accessKeys.map(accessKey => {
+            this.accessKeys.removeAccessKey(accessKey.toString());
+          }))
+          .then(output => {
+            res.send(204);
+            return next();
+          })
+          .catch(error => {
+            return next(new restify.InternalServerError(error));
+          });
     } catch (error) {
       logging.error(error);
       return next(new restify.InternalServerError());

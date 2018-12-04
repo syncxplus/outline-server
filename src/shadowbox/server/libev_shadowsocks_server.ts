@@ -36,11 +36,15 @@ export class LibevShadowsocksServer implements ShadowsocksServer {
       let metricsMessage;
       try {
         metricsMessage = parseMetricsMessage(buf);
+        if (metricsMessage.totalInboundBytes > 0) {
+          usageWriter.incPort(metricsMessage.portNumber);
+        }
+        return;
       } catch (err) {
         logging.error(`Error parsing metrics message ${buf}: ${err.stack}`);
         return;
       }
-      let previousTotalInboundBytes = this.portInboundBytes[metricsMessage.portNumber] || 0;
+      /*let previousTotalInboundBytes = this.portInboundBytes[metricsMessage.portNumber] || 0;
       if (previousTotalInboundBytes > metricsMessage.totalInboundBytes) {
         // totalInboundBytes is a counter that monotonically increases. A drop means
         // ss-server got restarted, so we set the previous value to zero.
@@ -68,7 +72,7 @@ export class LibevShadowsocksServer implements ShadowsocksServer {
           })
           .catch((err: Error) => {
             logging.error(`Unable to write bytes transferred: ${err.stack}`);
-          });
+          });*/
     });
   }
 
