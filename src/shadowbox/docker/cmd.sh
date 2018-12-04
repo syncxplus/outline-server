@@ -14,7 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-export SB_PUBLIC_IP=${SB_PUBLIC_IP:-$(curl https://ipinfo.io/ip)}
+ip=${SB_PUBLIC_IP:-$(curl --connect-timeout 1 -m 1 https://ipinfo.io/ip)}
+[[ "$?" != 0 ]] && {
+  inet=$(ip addr show eth0|grep inet\\s|awk '{print $2}')
+  ip=${inet%/*}
+}
+
+export SB_PUBLIC_IP=${ip}
 export SB_API_PORT=1023
 export SB_API_PREFIX=YiSSP-HOknt1mM7vKiu4DA
 export SB_METRICS_URL=${SB_METRICS_URL:-https://metrics-prod.uproxy.org}
