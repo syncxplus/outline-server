@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ip=${SB_PUBLIC_IP:-$(curl --connect-timeout 1 -m 1 https://ipinfo.io/ip)}
+ip=${SB_PUBLIC_IP:-$(curl -ks --connect-timeout 1 -m 1 https://ipinfo.io/ip)}
 [[ "$?" != 0 ]] && {
   inet=$(ip addr show eth0|grep inet\\s|awk '{print $2}')
   ip=${inet%/*}
