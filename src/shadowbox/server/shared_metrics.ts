@@ -52,19 +52,19 @@ export interface SharedMetricsPublisher {
   startSharing();
   stopSharing();
   isSharingEnabled();
-  countActivePort(): number;
+  getPortMetrics(): Map<number, number>;
 }
 
 export interface UsageMetrics {
   getUsage(): KeyUsage[];
   reset();
-  decPort();
-  countPort(): number;
+  clearPort();
+  getPortMap(): Map<number, number>;
 }
 
 export interface UsageMetricsWriter {
   writeBytesTransferred(accessKeyId: AccessKeyId, numBytes: number, countries: string[]);
-  incPort(port: number);
+  addPort(port: number);
 }
 
 // Tracks usage metrics since the server started.
@@ -79,11 +79,11 @@ export class InMemoryUsageMetrics implements UsageMetrics, UsageMetricsWriter {
     return [...this.totalUsage.values()];
   }
 
-  incPort(port: number) {
+  addPort(port: number) {
     this.activePort.set(port, (this.activePort.get(port) || 0) + 1);
   }
 
-  decPort() {
+  clearPort() {
     if (this.lastTimePortStat.size > 0) {
       this.lastTimePortStat.forEach((v, k) => {
         if (this.activePort.get(k) === v) {
@@ -97,8 +97,8 @@ export class InMemoryUsageMetrics implements UsageMetrics, UsageMetricsWriter {
     });
   }
 
-  countPort() {
-    return this.activePort.size;
+  getPortMap(): Map<number, number> {
+    return this.activePort;
   }
 
   // We use a separate metrics id so the accessKey id is not disclosed.
@@ -182,7 +182,7 @@ export class OutlineSharedMetricsPublisher implements SharedMetricsPublisher {
       }
       this.reportMetrics(usageMetrics.getUsage());
       usageMetrics.reset();*/
-      usageMetrics.decPort();
+      usageMetrics.clearPort();
     }, 300000);
     // TODO(fortuna): also trigger report on shutdown, so data loss is minimized.
   }
@@ -201,8 +201,8 @@ export class OutlineSharedMetricsPublisher implements SharedMetricsPublisher {
     return this.serverConfig.data().metricsEnabled || false;
   }
 
-  countActivePort(): number {
-    return this.usageMetrics.countPort();
+  getPortMetrics(): Map<number, number> {
+    return this.usageMetrics.getPortMap();
   }
 
   private reportMetrics(usageMetrics: KeyUsage[]) {

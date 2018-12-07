@@ -37,7 +37,7 @@ export class LibevShadowsocksServer implements ShadowsocksServer {
       try {
         metricsMessage = parseMetricsMessage(buf);
         if (metricsMessage.totalInboundBytes > 0) {
-          usageWriter.incPort(metricsMessage.portNumber);
+          usageWriter.addPort(metricsMessage.portNumber);
         }
         return;
       } catch (err) {

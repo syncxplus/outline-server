@@ -57,8 +57,8 @@ class MultiMetricsWriter {
         this.managerMetrics.writeBytesTransferred(accessKeyId, numBytes);
         this.sharedMetrics.writeBytesTransferred(accessKeyId, numBytes, countries);
     }
-    incPort(port) {
-        this.sharedMetrics.incPort(port);
+    addPort(port) {
+        this.sharedMetrics.addPort(port);
     }
 }
 function main() {

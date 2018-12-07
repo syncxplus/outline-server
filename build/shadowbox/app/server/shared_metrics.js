@@ -29,10 +29,10 @@ class InMemoryUsageMetrics {
     getUsage() {
         return [...this.totalUsage.values()];
     }
-    incPort(port) {
+    addPort(port) {
         this.activePort.set(port, (this.activePort.get(port) || 0) + 1);
     }
-    decPort() {
+    clearPort() {
         if (this.lastTimePortStat.size > 0) {
             this.lastTimePortStat.forEach((v, k) => {
                 if (this.activePort.get(k) === v) {
@@ -45,8 +45,8 @@ class InMemoryUsageMetrics {
             this.lastTimePortStat.set(k, v);
         });
     }
-    countPort() {
-        return this.activePort.size;
+    getPortMap() {
+        return this.activePort;
     }
     // We use a separate metrics id so the accessKey id is not disclosed.
     writeBytesTransferred(accessKeyId, numBytes, countries) {
@@ -119,7 +119,7 @@ class OutlineSharedMetricsPublisher {
             }
             this.reportMetrics(usageMetrics.getUsage());
             usageMetrics.reset();*/
-            usageMetrics.decPort();
+            usageMetrics.clearPort();
         }, 300000);
         // TODO(fortuna): also trigger report on shutdown, so data loss is minimized.
     }
@@ -134,8 +134,8 @@ class OutlineSharedMetricsPublisher {
     isSharingEnabled() {
         return this.serverConfig.data().metricsEnabled || false;
     }
-    countActivePort() {
-        return this.usageMetrics.countPort();
+    getPortMetrics() {
+        return this.usageMetrics.getPortMap();
     }
     reportMetrics(usageMetrics) {
         const reportEndTimestampMs = this.clock.now();

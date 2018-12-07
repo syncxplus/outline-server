@@ -30,7 +30,7 @@ class LibevShadowsocksServer {
             try {
                 metricsMessage = parseMetricsMessage(buf);
                 if (metricsMessage.totalInboundBytes > 0) {
-                    usageWriter.incPort(metricsMessage.portNumber);
+                    usageWriter.addPort(metricsMessage.portNumber);
                 }
                 return;
             }

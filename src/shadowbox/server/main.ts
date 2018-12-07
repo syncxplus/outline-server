@@ -61,8 +61,8 @@ class MultiMetricsWriter implements UsageMetricsWriter {
     this.sharedMetrics.writeBytesTransferred(accessKeyId, numBytes, countries);
   }
 
-  incPort(port: number) {
-    this.sharedMetrics.incPort(port);
+  addPort(port: number) {
+    this.sharedMetrics.addPort(port);
   }
 }
 
