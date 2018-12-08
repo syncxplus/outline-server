@@ -22,7 +22,7 @@ ip=${SB_PUBLIC_IP:-$(curl -ks --connect-timeout 1 -m 1 https://ipinfo.io/ip)}
 
 export SB_PUBLIC_IP=${ip}
 export SB_API_PORT=1023
-export SB_API_PREFIX=YiSSP-HOknt1mM7vKiu4DA
+export SB_API_PREFIX=api
 export SB_METRICS_URL=${SB_METRICS_URL:-https://metrics-prod.uproxy.org}
 export SB_STATE_DIR=/root/shadowbox/persisted-state
 export SB_CERTIFICATE_FILE="${SB_STATE_DIR}/shadowbox-selfsigned.crt"
