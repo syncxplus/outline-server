@@ -49,4 +49,7 @@ VOLUME ['/root/shadowbox/persisted-state']
 
 COPY src/shadowbox/docker/cmd.sh /
 
+RUN version=$(curl -ks https://api.github.com/repos/syncxplus/shadowbox/tags | grep name | awk '{print $2}' | sed 's/[",]//g' | sort | awk 'END{print}') \
+  && echo export SB_VERSION=${version} > /env
+
 CMD /cmd.sh

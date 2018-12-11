@@ -36,15 +36,11 @@ set -euo pipefail
 
 readonly name=syncxplus/shadowbox
 
-if [[ -z "${SB_VERSION:-}" ]]; then
-  tag=$(curl -ks --connect-timeout 10 -m 10 https://registry.hub.docker.com/v1/repositories/${name}/tags |sed -e 's/[][]//g' -e 's/"//g' -e 's/ //g' | tr '}' '\n' | awk -F: '{print $3}'|grep -v '[A-Za-z]' | sort | awk 'END{print}')
-  if [[ "$?" != 0 ]]; then
-    version=latest
-  else
-    version=${tag}
-  fi
+tag=$(curl -ks --connect-timeout 10 -m 10 https://registry.hub.docker.com/v1/repositories/${name}/tags |sed -e 's/[][]//g' -e 's/"//g' -e 's/ //g' | tr '}' '\n' | awk -F: '{print $3}'|grep -v '[A-Za-z]' | sort | awk 'END{print}')
+if [[ "$?" != 0 ]]; then
+  version=latest
 else
-  version=${SB_VERSION}
+  version=${tag}
 fi
 
 readonly image=${name}:${version}
@@ -57,4 +53,4 @@ readonly container=$(docker ps -a | grep shadowbox | awk '{print $1}')
 
 [[ ! -z "${container}" ]] && docker rm -f -v ${container}
 
-docker run --restart always --name shadowbox --net host -e SB_VERSION=${version} -v /root/shadowbox:/root/shadowbox/persisted-state -d ${image}
+docker run --restart always --name shadowbox --net host -v /root/shadowbox:/root/shadowbox/persisted-state -d ${image}
