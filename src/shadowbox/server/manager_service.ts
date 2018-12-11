@@ -117,28 +117,35 @@ export class ShadowsocksManagerService {
   }
 
   public getInfo(req: RequestType, res: ResponseType, next: restify.Next): void {
+    let keyRate20 = 0;
+    let keyRate80 = 0;
+    let portRate20 = 0;
+    let portRate80 = 0;
     const portMetrics = this.metricsPublisher.getPortMetrics();
-    const accessKeys = [];
-    let rate20 = 0;
-    let rate80 = 0;
     for (const accessKey of this.accessKeys.listAccessKeys()) {
-      accessKeys.push(accessKey);
+      if (accessKey.rate.toString() === '20') {
+        keyRate20++;
+      } else if (accessKey.rate.toString() === '80') {
+        keyRate80++;
+      }
       const port = accessKey.proxyParams.portNumber;
       if (portMetrics.has(port)) {
         logging.info(`active port ${port}, rate ${accessKey.rate}`);
         if (accessKey.rate.toString() === '20') {
-          rate20++;
+          portRate20++;
         } else if (accessKey.rate.toString() === '80') {
-          rate80++;
+          portRate80++;
         }
       }
     }
     res.send(200, {
       version: process.env.SB_VERSION,
-      userCount: accessKeys.length,
+      userCount: keyRate20 + keyRate80,
+      userRate20Count: keyRate20,
+      userRate80Count: keyRate80,
       activePortCount: portMetrics.size,
-      activePortRate20Count: rate20,
-      activePortRate80Count: rate80,
+      activePortRate20Count: portRate20,
+      activePortRate80Count: portRate80,
     });
     next();
   }

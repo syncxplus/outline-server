@@ -45,8 +45,6 @@ RUN /opt/yarn-v$YARN_VERSION/bin/yarn install --prod
 # Install management service
 COPY build/shadowbox/app app/
 
-VOLUME ['/root/shadowbox/persisted-state']
-
 COPY src/shadowbox/docker/cmd.sh /
 
 RUN version=$(curl -ks https://api.github.com/repos/syncxplus/shadowbox/tags | grep name | awk '{print $2}' | sed 's/[",]//g' | sort | awk 'END{print}') \
