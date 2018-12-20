@@ -936,12 +936,12 @@ server_recv_cb(EV_P_ ev_io *w, int revents)
             memmove(server->buf->data, server->buf->data + offset, server->buf->len);
         }
 
-        if (verbose) {
+        //if (verbose) {
             if ((atyp & ADDRTYPE_MASK) == 4)
                 LOGI("connect to [%s]:%d", host, ntohs(port));
             else
                 LOGI("connect to %s:%d", host, ntohs(port));
-        }
+        //}
 
         if (!need_query) {
             remote_t *remote = connect_to_remote(EV_A_ & info, server);
@@ -1590,9 +1590,9 @@ accept_cb(EV_P_ ev_io *w, int revents)
 #endif
     setnonblocking(serverfd);
 
-    if (verbose) {
-        LOGI("accept a connection");
-    }
+    //if (verbose) {
+        LOGI("accept a connection %s:%s", peer_name, remote_port);
+    //}
 
     server_t *server = new_server(serverfd, listener);
     ev_io_start(EV_A_ & server->recv_ctx->io);
