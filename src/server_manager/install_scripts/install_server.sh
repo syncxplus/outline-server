@@ -34,16 +34,7 @@
 
 set -euo pipefail
 
-readonly name=syncxplus/shadowbox
-
-tag=$(curl -ks --connect-timeout 10 -m 10 https://registry.hub.docker.com/v1/repositories/${name}/tags |sed -e 's/[][]//g' -e 's/"//g' -e 's/ //g' | tr '}' '\n' | awk -F: '{print $3}'|grep -v '[A-Za-z]' | sort | awk 'END{print}')
-if [[ "$?" != 0 ]]; then
-  version=latest
-else
-  version=${tag}
-fi
-
-readonly image=${name}:${version}
+readonly image=syncxplus/shadowbox:ipv6
 
 echo Using ${image}
 

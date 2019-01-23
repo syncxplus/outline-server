@@ -80,23 +80,23 @@ class LibevShadowsocksServer {
             '-p', portNumber.toString(), '-k', password, '--manager-address',
             `${metricsAddress.address}:${metricsAddress.port}`
         ];
-        if (!!process.env.SB_IPV6) {
-            commandArguments.push('-6');
-            commandArguments.push('-s');
-            commandArguments.push('::0');
-            commandArguments.push('-s');
-            commandArguments.push('0.0.0.0');
-        }
+        //if (!!process.env.SB_IPV6) {
+        commandArguments.push('-6');
+        commandArguments.push('-s');
+        commandArguments.push('::0');
+        commandArguments.push('-s');
+        commandArguments.push('0.0.0.0');
+        //}
         // Add the system DNS servers.
         // TODO(fortuna): Add dns.getServers to @types/node.
         for (const dnsServer of dns.getServers()) {
             commandArguments.push('-d');
             commandArguments.push(dnsServer);
         }
-        if (this.verbose) {
-            // Make the Shadowsocks output verbose in debug mode.
-            commandArguments.push('-v');
-        }
+        //if (this.verbose) {
+        // Make the Shadowsocks output verbose in debug mode.
+        commandArguments.push('-v');
+        //}
         logging.info('starting ss-server with args: ' + commandArguments.join(' '));
         const childProcess = child_process.spawn('ss-server', commandArguments);
         childProcess.on('error', (error) => {
