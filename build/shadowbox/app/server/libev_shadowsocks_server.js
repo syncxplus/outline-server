@@ -13,6 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 Object.defineProperty(exports, "__esModule", { value: true });
+const process = require("process");
 const child_process = require("child_process");
 const dns = require("dns");
 const shadowsocks_config_1 = require("ShadowsocksConfig/shadowsocks_config");
@@ -74,29 +75,21 @@ class LibevShadowsocksServer {
         this.portId[portNumber] = id;
         const metricsAddress = this.metricsSocket.address();
         const commandArguments = [
-            '-m', encryptionMethod,
-            '-u',
-            '--fast-open',
-            '-p', portNumber.toString(), '-k', password, '--manager-address',
-            `${metricsAddress.address}:${metricsAddress.port}`
+            '-c', `/root/config.json`,
+            '--plugin', 'v2ray-plugin',
+            '--plugin-opts',
+            `server;tls;cert=${process.env.SB_STATE_DIR}/shadowbox-selfsigned.crt;key=${process.env.SB_STATE_DIR}/shadowbox-selfsigned.key;loglevel=debug`
         ];
-        if (!!process.env.SB_IPV6) {
-            commandArguments.push('-6');
-            commandArguments.push('-s');
-            commandArguments.push('::0');
-            commandArguments.push('-s');
-            commandArguments.push('0.0.0.0');
-        }
         // Add the system DNS servers.
         // TODO(fortuna): Add dns.getServers to @types/node.
         for (const dnsServer of dns.getServers()) {
             commandArguments.push('-d');
             commandArguments.push(dnsServer);
         }
-        if (this.verbose) {
-            // Make the Shadowsocks output verbose in debug mode.
-            commandArguments.push('-v');
-        }
+        //if (this.verbose) {
+        // Make the Shadowsocks output verbose in debug mode.
+        commandArguments.push('-v');
+        //}
         logging.info('starting ss-server with args: ' + commandArguments.join(' '));
         const childProcess = child_process.spawn('ss-server', commandArguments);
         childProcess.on('error', (error) => {

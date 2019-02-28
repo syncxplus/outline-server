@@ -63,7 +63,7 @@ readonly user_config="${SB_STATE_DIR}/shadowbox_config.json"
 if [[ ! -e "${user_config}" ]]; then
   echo -n '{"accessKeys":[{"id":"0","metricsId":"'>${user_config}
   uuid=$(cat /proc/sys/kernel/random/uuid) && echo -n ${uuid}>>${user_config}
-  echo -n '","name":"","port":1024,"encryptionMethod":"chacha20-ietf-poly1305","password":"shadowbox123"}],"nextId":1}'>>${user_config}
+  echo -n '","name":"","port":443,"encryptionMethod":"chacha20-ietf-poly1305","password":"shadowbox123"}],"nextId":1}'>>${user_config}
 fi
 
 node app/server/main.js
